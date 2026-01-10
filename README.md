@@ -2,3 +2,12 @@
 A computational visualization of a Tidal Disruption Event on a Supermassive Black Hole using Python+OpenGl+PyQt5/Qt.
 
 To add a star press "T". To start the disruption press "D".
+
+This project requires Python and the following libraries:
+- Python (3.9 or newer is recommended)
+- PyQt5 (OpenGL window management and user interaction)
+- PyOpenGL (3D rendering)
+- NumPy (vectorized numerical computations)
+
+You can install them with:
+pip install -r libraries.txt
