@@ -346,7 +346,7 @@ class BlackHoleScene(QOpenGLWidget):
     def wheelEvent(self, event):
         delta = event.angleDelta().y() / 120
         self.cam_distance -= delta * 5
-        self.cam_distance = np.clip(self.cam_distance, 15, 400)
+        self.cam_distance = np.clip(self.cam_distance, 15, 650)
         self.update()
 
     # ---------------------------------------
