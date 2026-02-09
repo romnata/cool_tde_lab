@@ -42,7 +42,7 @@ class TDE:
         self.disk_outer_decay = 0.999  # gradual settling to existing disk
         self.orbit_counter = np.zeros(
             self.num_particles)  # turn orbits
-        # предыдущие углы для подсчёта оборотов
+        # previous angles for calculating turns
         self.last_angles = np.zeros(self.num_particles)
         self.settle_orbits = 15.0  # number of turns before settling
 
