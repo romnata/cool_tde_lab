@@ -6,10 +6,10 @@ import numpy as np
 class TDE:
     def __init__(self, bh_position, M_bh):
         # BH parameters
-        self.bh_position = bh_position  # np.array([0,0,0])
+        self.bh_position = bh_position
         self.M_bh = M_bh
         self.G = 0.5  # Gravitational constant (simulation units)
-        # Softening length to prevent singularity and infall (~ inner_radius / 2 recommended)
+        # Softening length to prevent singularity and infall (~ inner_radius / 2 rec)
         self.eps = 5
 
         # TDE states
@@ -22,7 +22,7 @@ class TDE:
         self.initial_bound_mask = None
 
         # Star and particle parameters
-        self.num_particles = 90000  # Number of star particles
+        self.num_particles = 90000  # number of star particles
         self.star_mass = None
         self.star_radius = None
         self.Rt = None
@@ -31,31 +31,30 @@ class TDE:
         self.star_offsets = None
         self.particles_pos = None
         self.particles_vel = None
-        self.particles = None  # For render compatibility
-        self.colors = None  # Base particle colors
-        self.flicker_phases = None  # Flicker phases (like background stars)
+        self.particles = None
+        self.colors = None  # base particle colors
+        self.flicker_phases = None  # flicker phases (like background stars)
 
-        # усадка в диск
-        self.disk_plane_normal = np.array([0.0, 0.0, 1.0])  # нормаль диска
-        self.disk_settle_alpha = 0.0002  # скорость усадки частиц в плоскость диска
-        # максимально допустимый радиус диска (в начале может быть больше)
-        self.disk_outer_limit = 50.0
-        # коэффициент постепенного уменьшения радиуса к реальному диску
-        self.disk_outer_decay = 0.999
+        # disk settle
+        self.disk_plane_normal = np.array([0.0, 0.0, 1.0])  # disk
+        self.disk_settle_alpha = 0.0002  # settle velocity
+        self.disk_outer_limit = 50.0  # max radius
+        self.disk_outer_decay = 0.999  # gradual settling to existing disk
         self.orbit_counter = np.zeros(
-            self.num_particles)  # отслеживаем обороты
+            self.num_particles)  # turn orbits
         # предыдущие углы для подсчёта оборотов
         self.last_angles = np.zeros(self.num_particles)
-        self.settle_orbits = 15.0  # количество оборотов до «усадки» в диск
+        self.settle_orbits = 15.0  # number of turns before settling
 
+        # star's disk parameters
         self.disk_base_height = 3.0
         self.disk_heat_factor = 4.0
 
         # Spaghettification (pre-disruption only)
-        self.spaghettify_strength = 2   # общая сила эффекта
-        self.spaghettify_power = 2.0         # насколько резко растёт при приближении к Rt
-        self.spaghettify_max_stretch = 10.0   # максимум растяжения вдоль радиуса
-        self.spaghettify_compress = 0.4     # сжатие поперёк
+        self.spaghettify_strength = 2   # strength
+        self.spaghettify_power = 2.0         # increase with approach
+        self.spaghettify_max_stretch = 10.0   # max stretch
+        self.spaghettify_compress = 0.4     # compress strength
 
         # tidal torque
         self.tidal_torque_strength = 0.3
@@ -81,7 +80,7 @@ class TDE:
         # Parabolic orbit parameters (e=1)
         p = 2 * Rp
         cos_nu = p / r - 1
-        # Add initial_angle to shift position/trajectory
+        # initial_angle to shift position/trajectory
         nu = np.arccos(cos_nu) + initial_angle
         sin_nu = np.sin(nu)
         cos_nu = np.cos(nu)
@@ -99,13 +98,11 @@ class TDE:
         v_r = -(self.G * self.M_bh / L) * np.abs(sin_nu)
         v_theta = v_theta
 
-        # ----------------------------
-        # Замедляем подлёт к ЧД, чтобы спагеттификация успела проявиться
-        v_r *= 0.5      #  радиальную скорость
-        v_theta *= 0.8  # тангенциальную скорость
-        # ----------------------------
+        # less velocity for proper spaghettification
+        v_r *= 0.5      # rad velocity
+        v_theta *= 0.8  # tang velocity
 
-        # Velocity components (ccw rotation like disk; adjusted for right-side approach with left curl)
+        # Velocity components (ccw rotation like disk; right-side approach with left curl)
         v_x = v_r * cos_nu - v_theta * sin_nu
         v_y = v_r * sin_nu + v_theta * cos_nu
         v_z = -0.0001
@@ -121,7 +118,7 @@ class TDE:
         self.colors[:, 1] = np.random.uniform(0.4, 0.6, n)
         self.colors[:, 2] = np.random.uniform(0.8, 1.0, n)
 
-        # Flicker phases (to restore prior flickering)
+        # Flicker phases
         self.flicker_phases = np.random.uniform(0, 2 * np.pi, n)
 
         # Initial particle positions
@@ -152,7 +149,7 @@ class TDE:
             # Update center (rigid body)
             r_vec = self.star_center - self.bh_position
             r = np.linalg.norm(r_vec)
-            # 1.5–2.0, чтобы притяжение сильнее
+            # 1.5–2.0 (higher = stronger gravity)
             acc = -1.8 * self.G * self.M_bh / (r**2 + self.eps**2)**1.5 * r_vec
             self.star_vel += acc * dt
             self.star_center += self.star_vel * dt
@@ -162,38 +159,34 @@ class TDE:
             r = np.linalg.norm(r_vec) + 1e-8
             ur = r_vec / r
 
-            # Насколько близко к tidal radius
-            # Хотим эффект с самого начала движения
-            stretch_raw = (self.Rt / r)
-
-            # Делаем плавный рост
+            # gradual increase
             stretch_factor = 1 / (1 + (r / self.Rt) ** self.spaghettify_power)
 
             stretch_factor *= self.spaghettify_strength
             stretch_factor = np.clip(
                 stretch_factor, 0.0, self.spaghettify_max_stretch)
 
-            # Разложение offsets
+            #  offsets
             proj = np.dot(self.star_offsets, ur)[:, None] * ur[None, :]
             perp = self.star_offsets - proj
 
-            # Применяем tidal deformation
+            # tidal deformation
             deformed_offsets = (
                 proj * (1 + 3 * stretch_factor) +
                 perp * (1 - 0.5 * self.spaghettify_compress * stretch_factor))\
 
             # TIDAL TORQUE (small internal rotation)
-            # Направление орбитального момента
+            # orbital momentum
             L_dir = np.cross(r_vec, self.star_vel)
             L_norm = np.linalg.norm(L_dir) + 1e-8
             L_dir /= L_norm
-            # Ось для внутреннего вращения (перпендикулярно к r_vec)
+            # internal rotation axis (perpendicular to r_vec)
             torque_dir = np.cross(L_dir, ur)
-            torque_dir /= np.linalg.norm(torque_dir) + 1e-8  # нормируем
-            # Угол вращения для этого шага
+            torque_dir /= np.linalg.norm(torque_dir) + 1e-8
+            # rotation angle
             theta = self.tidal_torque_strength * stretch_factor * \
-                dt  # масштабируем через stretch_factor
-            # Rodrigues formula: вращаем каждый offset вокруг torque_dir
+                dt
+            # Rodrigues formula: rotate every offset around torque_dir
             k = torque_dir
             v = deformed_offsets  # Nx3
             v_rot = (v * np.cos(theta) +
@@ -201,7 +194,7 @@ class TDE:
                      k[None, :] * np.einsum('ij,j->i', v, k)[:, None] * (1 - np.cos(theta)))
             deformed_offsets = v_rot
 
-            # Обновляем позиции частиц
+            # update particle positions
             self.particles_pos = self.star_center[None, :] + deformed_offsets
 
             # Check for disruption (when r < 1.5 Rt)
@@ -234,7 +227,7 @@ class TDE:
             r_vecs = self.particles_pos - self.bh_position[None, :]
             rs = np.linalg.norm(r_vecs, axis=1)[:, None]
 
-            # Барьер BH — не даём падать внутрь inner disk
+            # BH barrier (to not to fall to BH earlier)
             inner_barrier = 3.5
             mask_inner = rs[:, 0] < inner_barrier
             if np.any(mask_inner):
@@ -246,13 +239,13 @@ class TDE:
             self.particles_vel += accs * dt
             self.particles_pos += self.particles_vel * dt
 
-            # Используем «замороженные» bound/unbound
+            # freezed bound/unbound
             E = self.initial_energy
             bound = self.initial_bound_mask
-            # Плавное ограничение участия в диске (только почти bound)
+            # gradual stop (pre-bound)
             E_scale = 0.12  # настраиваемый коэффициент
             disk_weight = np.exp(-np.maximum(E, 0) / E_scale)
-            mask_disk = disk_weight > 0.001  # только для почти bound
+            mask_disk = disk_weight > 0.001  # for pre-bound
 
             # THICK DISK MODEL
             if np.any(mask_disk):
@@ -270,36 +263,34 @@ class TDE:
                     0.0005 * (z / (target_height + 1e-6))
                     + 0.001 * v_z)
 
-            # -------------------------------
-            # Подсчёт оборотов и окончательная усадка в диск
-            # -------------------------------
-            # Углы для ВСЕХ частиц
+            # Turns count and final settle to exisiting disk
+            # angles for ALL particles
             angles_all = np.arctan2(
                 self.particles_pos[:, 1],
                 self.particles_pos[:, 0])
             delta_angle = angles_all - self.last_angles
             delta_angle = (delta_angle + np.pi) % (2*np.pi) - np.pi
-            # увеличиваем счётчик только для bound
+            # increase for bound only
             self.orbit_counter[bound] += np.abs(delta_angle[bound])
-            # обновляем для ВСЕХ
+            # update for ALL
             self.last_angles = angles_all
 
             # Viscosity for radial velocity only (spiral infall without suction, circularization)
-            # Configurable: coefficient (higher for faster circularization, 0.05 for quick)
-            alpha = 0.0002  # чем больше, тем быстрее
+            # higher for faster circularization
+            alpha = 0.0002
 
-            # Орбитальная стабилизация — чтобы частицы не падали в BH
+            # orbital stabilization (to not to fall straight to bh)
             r_bound = rs[mask_disk]
             v_bound = self.particles_vel[mask_disk]
             r_vec_bound = r_vecs[mask_disk]
-            # Тангенциальное направление
+            # tang direction
             ur = r_vec_bound / r_bound
             vt = v_bound - np.sum(v_bound * ur, axis=1)[:, None] * ur
-            # Целевая круговая скорость
+            # circular velocity
             v_circ = np.sqrt(self.G * self.M_bh / r_bound)
             vt_norm = np.linalg.norm(vt, axis=1) + 1e-8
             vt_dir = vt / vt_norm[:, None]
-            # Медленно тянем к круговой орбите
+            # slowly to the circular orbit
             beta_circ = 0.0012  # circularization
             self.particles_vel[mask_disk] += beta_circ * (
                 v_circ * vt_dir - vt)
@@ -315,9 +306,9 @@ class TDE:
 
                 self.particles_vel[mask_disk] -= alpha * v_r * ur_bound
                 self.particles_vel[mask_disk] -= 0.1 * \
-                    alpha * vt  # гашение тангенцальной скорости
+                    alpha * vt  # tang velocity damping
 
-                # disk cooling (очень медленный energy loss)
+                # disk cooling (slow energy loss)
                 cool = 0.00005
                 self.particles_vel[mask_disk] *= (1 - cool)
 
