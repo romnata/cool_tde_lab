@@ -316,7 +316,7 @@ class BlackHoleScene(QOpenGLWidget):
         base_size = 4.0 * self.jet_thickness_multiplier * progress
         self.jet_particles[:, 6] = base_size * (1.0 - 0.5 * t) + 1.0
 
-        # Simple coherent wobble (with delay)
+        # Simple coherent wobble (+ delay)
         if self.tde_frame_counter >= self.wobble_delay_frames:
             wobble_x = self.wobble_amplitude * \
                 np.sin(self.angle * self.wobble_frequency)
