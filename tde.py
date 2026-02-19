@@ -276,7 +276,7 @@ class TDE:
             self.last_angles = angles_all
 
             # Viscosity for radial velocity only (spiral infall without suction, circularization)
-            # higher for faster circularization
+            # increase for faster circularization
             alpha = 0.0002
 
             # orbital stabilization (to not to fall straight to bh)
