@@ -1,6 +1,9 @@
+# blackhole.py
+
 import numpy as np
 from PyQt5.QtWidgets import QOpenGLWidget
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QIcon
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from jets import generate_jet_particles
@@ -12,14 +15,15 @@ class BlackHoleScene(QOpenGLWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFocusPolicy(Qt.StrongFocus)
-        self.setWindowTitle("TDE Visualization")
-        self.setGeometry(100, 100, 800, 600)
+        self.setWindowTitle("Cool TDE Lab")
+        self.setGeometry(200, 100, 1200, 1300)
+        self.setWindowIcon(QIcon("icon.png"))
 
         # rotation
         self.angle = 0.2
 
         # camera
-        self.cam_distance = 120.0
+        self.cam_distance = 150.0
         self.cam_angle_x = 20.0
         self.cam_angle_y = 0.0
         self.last_mouse_pos = None
@@ -47,8 +51,12 @@ class BlackHoleScene(QOpenGLWidget):
         # thickness multiplier (1.0 = no change, 2.0 = double)
         self.jet_thickness_multiplier = 1.5
 
-        # TDE
+        self.jets_enabled = True
+
+        # TDE (default)
         self.tde = TDE(bh_position=np.zeros(3), M_bh=10.0)
+        self.star_mass = 1
+        self.star_radius = 3
 
         # disk
         self.accretion_disk = AccretionDisk()
@@ -139,6 +147,12 @@ class BlackHoleScene(QOpenGLWidget):
         glDisable(GL_BLEND)
         glPopMatrix()
 
+    def generate_jets(self):
+        self.jet_particles = generate_jet_particles()
+
+    def remove_jets(self):
+        pass
+
     # ---------------------------------------
     # STARS & twinkling
     # ---------------------------------------
@@ -202,6 +216,7 @@ class BlackHoleScene(QOpenGLWidget):
             glRotatef(140, 1, 0, 0)
             glRotatef(15, 1, 0, 0)
             glRotatef(-15, 0, 1, 0)
+            # Tunable: Particle size # Increase for visibility (2.0-4.0)
             glPointSize(3.0)
 
             t = self.angle * 200.0
@@ -238,10 +253,11 @@ class BlackHoleScene(QOpenGLWidget):
         self.accretion_disk.draw()
 
         # jets
-        glPushMatrix()
-        glRotatef(-20, 1, 0, 0)
-        self.draw_jets()
-        glPopMatrix()
+        if self.jets_enabled and self.jet_particles is not None:
+            glPushMatrix()
+            glRotatef(-20, 1, 0, 0)
+            self.draw_jets()
+            glPopMatrix()
 
     # ---------------------------------------
     # ANIMATION
@@ -253,18 +269,20 @@ class BlackHoleScene(QOpenGLWidget):
 
         if self.tde.active and self.tde.disrupted and self.tde.moving:
             self.tde_frame_counter += 1
-            self.jet_velocity_z = np.zeros(len(self.jet_particles))
+            if self.jets_enabled and self.jet_particles is not None:
+                self.jet_velocity_z = np.zeros(len(self.jet_particles))
             self.jet_color_progress = min(
                 self.jet_color_progress + self.jet_color_speed, 1.0)
             self.update_jets_for_tde(progress=self.jet_color_progress)
         else:
-            self.jet_velocity_z = np.zeros(len(self.jet_particles))
+            if self.jets_enabled and self.jet_particles is not None:
+                self.jet_velocity_z = np.zeros(len(self.jet_particles))
             self.tde_frame_counter = 0
             if self.jet_color_progress > 0:
                 self.jet_color_progress = max(
                     self.jet_color_progress - self.jet_color_speed, 0.0)
                 self.update_jets_for_tde(progress=self.jet_color_progress)
-            if not self.tde.moving and np.any(self.jet_particles != self.jet_particles_base):
+            if not self.tde.moving and not np.allclose(self.jet_particles, self.jet_particles_base, atol=1e-6):
                 alpha = 0.1
                 self.jet_particles = (
                     1 - alpha) * self.jet_particles + alpha * self.jet_particles_base
@@ -272,7 +290,8 @@ class BlackHoleScene(QOpenGLWidget):
                     1 - alpha) * self.jet_velocity_z + alpha * np.zeros(len(self.jet_velocity_z))
                 self.flashes = np.random.uniform(
                     0.0, 0.3, len(self.jet_particles))
-        self.jet_particles[:, 2] += self.jet_velocity_z
+        if self.jets_enabled and self.jet_particles is not None:
+            self.jet_particles[:, 2] += self.jet_velocity_z
         self.update()
 
     # ---------------------------------------
@@ -316,7 +335,7 @@ class BlackHoleScene(QOpenGLWidget):
         base_size = 4.0 * self.jet_thickness_multiplier * progress
         self.jet_particles[:, 6] = base_size * (1.0 - 0.5 * t) + 1.0
 
-        # Simple coherent wobble (+ delay)
+        # Simple coherent wobble (with delay)
         if self.tde_frame_counter >= self.wobble_delay_frames:
             wobble_x = self.wobble_amplitude * \
                 np.sin(self.angle * self.wobble_frequency)
@@ -357,7 +376,8 @@ class BlackHoleScene(QOpenGLWidget):
             self.tde.active = False
             self.tde.disrupted = False
             self.tde.moving = False
-            self.tde.add_star(r_init=40, mass=1, radius=3)
+            self.tde.add_star(r_init=40, mass=self.star_mass,
+                              radius=self.star_radius)
         elif event.key() == Qt.Key_D:
             self.tde.tidal_enabled = True
             self.tde.disrupt()
