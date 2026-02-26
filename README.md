@@ -3,11 +3,12 @@ Welcome to Cool TDE Lab! :)
 
 An interactive computational visualization of a Tidal Disruption Event on a Supermassive Black Hole using Python+OpenGl+PyQt5/Qt.
 
-Run the program in the "main.py".
+Run the program in the "main.py".                        
 To add a star or to update the scene press "T".                           
 To start the disruption press "D".                                     
 After entering BH and Star parameters press "Submit" (you will see the successfully added information in the terminal), then make the Vizualization window active, and press "T" & "D".                         
 (repeat after each new adjustment)
+
 
 
 This project requires Python and the following libraries:
