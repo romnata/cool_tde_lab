@@ -106,11 +106,11 @@ tde_array = np.array(tde_data, dtype=tde_dtype)
 # Create Tkinter window
 root = tk.Tk()
 root.title("TDE Database")
-root.geometry("1000x700+250+200")  # starting size+x+y
+root.geometry("800x700+50+200")  # starting size+x+y
 
 # title label
 title_label = tk.Label(
-    root, text="Database of Known TDEs", font=("Helvetica", 14, "bold"))
+    root, text="Database of Known TDEs 1990-2025", font=("Helvetica", 14, "bold"))
 title_label.pack(side="top", pady=10)
 
 # frame for Treeview
@@ -165,3 +165,6 @@ def resize_columns(event):
 root.bind("<Configure>", resize_columns)
 
 root.mainloop()
+
+root.mainloop()
+
