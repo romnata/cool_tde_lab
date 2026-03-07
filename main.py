@@ -161,11 +161,13 @@ class MainWindow(QMainWindow):
         import os
         import subprocess
 
-        # to folder
+        # to folders
         current_dir = os.path.dirname(os.path.abspath(__file__))
         db_file = os.path.join(current_dir, "database_tde.py")
+        manual_file = os.path.join(current_dir, "database_manual.py")
 
         subprocess.Popen([sys.executable, db_file])
+        subprocess.Popen([sys.executable, manual_file])
 
 
 def main():
